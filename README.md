@@ -14,7 +14,6 @@ The system executes once per hour, triggered by a keeper bot or any user calling
 	•	Fee Treasury: Collects creator fees from PumpFun
 
 Hourly Buyback & Burn:
-	•	50% → Buyback + burn $WHEEL.
 •	50% → Buyback + burn $WHEEL.
 •	50% → Buyback + burn $PUMP.
 
