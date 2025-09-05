@@ -1,0 +1,95 @@
+programs/wheel/src/lib.rs
+
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Token, TokenAccount, Mint, Burn};
+
+declare_id!("WHEEL11111111111111111111111111111111111111");
+
+#[program]
+pub mod wheel {
+    use super::*;
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        let state = &mut ctx.accounts.state;
+        state.last_burn_time = Clock::get()?.unix_timestamp;
+        Ok(())
+    }
+
+    pub fn execute_buyback_burn(ctx: Context<ExecuteBuybackBurn>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        require!(
+            now >= ctx.accounts.state.last_burn_time + 3600,
+            WheelError::TooEarly
+        );
+
+        let fees_balance = ctx.accounts.fee_treasury.amount;
+        require!(fees_balance > 0, WheelError::NoFees);
+
+        // Split fees 50/50
+        let half = fees_balance / 2;
+
+        // Burn WHEEL portion
+        token::burn(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Burn {
+                    mint: ctx.accounts.wheel_mint.to_account_info(),
+                    from: ctx.accounts.fee_treasury.to_account_info(),
+                    authority: ctx.accounts.authority.to_account_info(),
+                },
+            ),
+            half,
+        )?;
+
+        // Burn PUMP portion
+        token::burn(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Burn {
+                    mint: ctx.accounts.pump_mint.to_account_info(),
+                    from: ctx.accounts.fee_treasury.to_account_info(),
+                    authority: ctx.accounts.authority.to_account_info(),
+                },
+            ),
+            fees_balance - half,
+        )?;
+
+        // Update state
+        ctx.accounts.state.last_burn_time = now;
+        Ok(())
+    }
+}
+
+#[account]
+pub struct State {
+    pub last_burn_time: i64,
+}
+
+#[derive(Accounts)]
+pub struct Initialize<'info> {
+    #[account(init, payer = authority, space = 8 + 8)]
+    pub state: Account<'info, State>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ExecuteBuybackBurn<'info> {
+    #[account(mut)]
+    pub state: Account<'info, State>,
+    #[account(mut)]
+    pub fee_treasury: Account<'info, TokenAccount>,
+    pub wheel_mint: Account<'info, Mint>,
+    pub pump_mint: Account<'info, Mint>,
+    pub authority: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[error_code]
+pub enum WheelError {
+    #[msg("Not enough time passed since last burn")]
+    TooEarly,
+    #[msg("No fees available")]
+    NoFees,
+}
