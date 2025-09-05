@@ -1,0 +1,33 @@
+ts/scripts/keeper.ts
+
+import { Connection, Keypair } from "@solana/web3.js";
+import { Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
+import { IDL } from "../target/types/wheel";
+
+const STATE_PDA = new web3.PublicKey("STATE1111111111111111111111111111111111");
+
+(async () => {
+  const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+  const wallet = Keypair.fromSecretKey(...); // load from env
+  const provider = new AnchorProvider(connection, { publicKey: wallet.publicKey, signAllTransactions: wallet.signAllTransactions, signTransaction: wallet.signTransaction }, {});
+  const program = new Program(IDL, "WHEEL11111111111111111111111111111111111111", provider);
+
+  try {
+    const tx = await program.methods
+      .executeBuybackBurn()
+      .accounts({
+        state: STATE_PDA,
+        feeTreasury: "...", // PDA where fees accumulate
+        wheelMint: "...",   // $WHEEL mint
+        pumpMint: "...",    // $PUMP mint
+        authority: wallet.publicKey,
+        tokenProgram: web3.TOKEN_PROGRAM_ID,
+      })
+      .signers([wallet])
+      .rpc();
+
+    console.log("Executed hourly burn tx:", tx);
+  } catch (err) {
+    console.error("Keeper failed:", err);
+  }
+})();
