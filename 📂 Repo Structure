@@ -1,0 +1,13 @@
+the-wheel-solana/
+├── programs/
+│   └── wheel/         # Anchor program (Rust)
+│       ├── Cargo.toml
+│       ├── src/lib.rs
+├── ts/
+│   ├── scripts/
+│   │   └── keeper.ts  # Off-chain bot
+│   └── tests/
+│       └── wheel.ts   # Example tests
+├── Anchor.toml
+├── package.json
+├── README.md
